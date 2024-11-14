@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Caffeine Tracker</title>
+</head>
+<body>
+    <h1>Caffeine Intake Tracker</h1>
+
+    <form id="intakeForm">
+        <label for="source">Select Caffeine Source:</label>
+        <select id="source" onchange="setDose()">
+            <option value="">Custom Amount</option>
+            <option value="95">Coffee (8 oz) - 95 mg</option>
+            <option value="64">Tea (8 oz) - 64 mg</option>
+            <option value="40">Soda (12 oz) - 40 mg</option>
+            <option value="160">Energy Drink (8 oz) - 160 mg</option>
+            <option value="63">Espresso (1 oz) - 63 mg</option>
+            <option value="100">Caffeine Pill - 100 mg</option>
+        </select>
+
+        <label for="dose">Dose (mg):</label>
+        <input type="number" id="dose" name="dose" required>
+
+        <label for="time">Time (HH:MM):</label>
+        <input type="time" id="time" required>
+
+        <button type="button" onclick="submitIntake()">Add Intake</button>
+    </form>
+
+    <div id="intakes">
+        <h2>Intake History</h2>
+        <table id="intakeTable" border="1">
+            <tr>
+                <th>Dose (mg)</th>
+                <th>Time</th>
+            </tr>
+        </table>
+    </div>
+
+    <div id="plot">
+        <h2>Caffeine Concentration Over Time</h2>
+        <img id="caffeinePlot" src="" alt="Caffeine Plot">
+    </div>
+
+    <script>
+        // Function to set dose based on selected source
+        function setDose() {
+            const sourceDropdown = document.getElementById('source');
+            const selectedValue = sourceDropdown.value;
+            const doseInput = document.getElementById('dose');
+
+            if (selectedValue) {
+                doseInput.value = selectedValue;  // Set dose to selected option's value
+            } else {
+                doseInput.value = '';  // Clear dose if "Custom Amount" is selected
+            }
+        }
+
+        // Function to submit intake data
+        async function submitIntake() {
+            const dose = document.getElementById('dose').value;
+            const time = document.getElementById('time').value;
+
+            await fetch('/add_intake', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({dose: dose, time: time})
+            });
+
+            await updateIntakeTable(); // Update the table after adding intake
+            await updatePlot(); // Update the plot after adding intake
+        }
+
+        // Function to fetch and display intake data in the table
+        async function updateIntakeTable() {
+            const response = await fetch('/get_intakes');
+            const intakes = await response.json();
+            const table = document.getElementById('intakeTable');
+
+            // Clear existing table rows except for headers
+            table.innerHTML = `<tr>
+                <th>Dose (mg)</th>
+                <th>Time</th>
+            </tr>`;
+
+            // Add rows for each intake
+            intakes.forEach(intake => {
+                const row = table.insertRow();
+                const doseCell = row.insertCell(0);
+                const timeCell = row.insertCell(1);
+                doseCell.innerText = intake.dose;
+                timeCell.innerText = intake.time;
+            });
+        }
+
+        // Function to fetch and display the updated plot
+        async function updatePlot() {
+            const plotRes = await fetch('/plot_concentration');
+            const plotData = await plotRes.json();
+            document.getElementById('caffeinePlot').src = 'data:image/png;base64,' + plotData.plot;
+        }
+
+        // Initial table and plot load
+        updateIntakeTable();
+        updatePlot();
+    </script>
+</body>
+</html>
